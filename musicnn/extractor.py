@@ -9,6 +9,58 @@ tf.compat.v1.disable_eager_execution()
 from musicnn import models
 from musicnn import configuration as config
 
+def batch_mel(melspetrogram, n_frames, overlap):
+    '''For an efficient computation, we split the full music spectrograms in patches of length n_frames with overlap.
+
+    INPUT
+    
+    - melspetrogram: mel spectrogram to split.
+    Data format: 2D np.array (time, frequency)
+
+    - n_frames: length (in frames) of the input spectrogram patches.
+    Data format: integer.
+    Example: 187
+        
+    - overlap: ammount of overlap (in frames) of the input spectrogram patches.
+    Note: Set it considering n_frames.
+    Data format: integer.
+    Example: 10
+    
+    OUTPUT
+    
+    - batch: batched audio representation. It returns spectrograms split in patches of length n_frames with overlap.
+    Data format: 3D np.array (batch, time, frequency)
+
+    - audio_rep: raw audio representation (spectrogram).
+    Data format: 2D np.array (time, frequency)
+    '''
+
+    if melspetrogram.shape[1] != config.N_MELS:
+        print('The mel spectrogram has not the right shape. Converting...')
+        S = librosa.feature.inverse.mel_to_stft(melspetrogram)
+        audio_rep = librosa.feature.melspectrogram(S=S,
+                                            hop_length=config.FFT_HOP,
+                                            n_fft=config.FFT_SIZE,
+                                            n_mels=config.N_MELS).T
+    else:
+        audio_rep = melspetrogram.T
+    print(audio_rep.shape)
+    audio_rep = audio_rep.astype(np.float16)
+    audio_rep = np.log10(10000 * audio_rep + 1)
+
+    # batch it for an efficient computing
+    first = True
+    last_frame = audio_rep.shape[0] - n_frames + 1
+    # +1 is to include the last frame that range would not include
+    for time_stamp in range(0, last_frame, overlap):
+        patch = np.expand_dims(audio_rep[time_stamp : time_stamp + n_frames, : ], axis=0)
+        if first:
+            batch = patch
+            first = False
+        else:
+            batch = np.concatenate((batch, patch), axis=0)
+
+    return batch, audio_rep
 
 def batch_data(audio_file, n_frames, overlap):
     '''For an efficient computation, we split the full music spectrograms in patches of length n_frames with overlap.
@@ -44,6 +96,7 @@ def batch_data(audio_file, n_frames, overlap):
                                                hop_length=config.FFT_HOP,
                                                n_fft=config.FFT_SIZE,
                                                n_mels=config.N_MELS).T
+    print(audio_rep.shape)
     audio_rep = audio_rep.astype(np.float16)
     audio_rep = np.log10(10000 * audio_rep + 1)
 
@@ -62,7 +115,7 @@ def batch_data(audio_file, n_frames, overlap):
     return batch, audio_rep
 
 
-def extractor(file_name, model='MTT_musicnn', input_length=3, input_overlap=False, extract_features=True):
+def extractor(file_name=None, melspec=None, model='MTT_musicnn', input_length=3, input_overlap=False, extract_features=True):
     '''Extract the taggram (the temporal evolution of tags) and features (intermediate representations of the model) of the music-clip in file_name with the selected model.
 
     INPUT
@@ -154,8 +207,13 @@ def extractor(file_name, model='MTT_musicnn', input_length=3, input_overlap=Fals
             raise ValueError('MSD_vgg model is still training... will be available soon! :)')
 
     # batching data
-    print('Computing spectrogram (w/ librosa) and tags (w/ tensorflow)..', end =" ")
-    batch, spectrogram = batch_data(file_name, n_frames, overlap)
+    if isinstance(melspec,np.ndarray):
+        batch, spectrogram = batch_mel(melspec, n_frames, overlap)
+    elif isinstance(file_name, str):
+        print('Computing spectrogram (w/ librosa) and tags (w/ tensorflow)..', end =" ")
+        batch, spectrogram = batch_data(file_name, n_frames, overlap)
+    else:
+        raise ValueError('You need to specify either a file_name or a melspec.')
 
     # tensorflow: extract features and tags
     # ..first batch!
