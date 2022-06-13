@@ -43,7 +43,7 @@ def batch_mel(melspetrogram, n_frames, overlap, n_mels):
                                             n_fft=config.FFT_SIZE,
                                             n_mels=n_mels).T
     else:
-        audio_rep = melspetrogram
+        audio_rep = melspetrogram.T
     print(audio_rep.shape)
     audio_rep = audio_rep.astype(np.float16)
     audio_rep = np.log10(10000 * audio_rep + 1)
