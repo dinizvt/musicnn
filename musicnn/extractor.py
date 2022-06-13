@@ -9,7 +9,7 @@ tf.compat.v1.disable_eager_execution()
 from musicnn import models
 from musicnn import configuration as config
 
-def batch_mel(melspetrogram, n_frames, overlap):
+def batch_mel(melspetrogram, n_frames, overlap, n_mels):
     '''For an efficient computation, we split the full music spectrograms in patches of length n_frames with overlap.
 
     INPUT
@@ -208,7 +208,7 @@ def extractor(file_name=None, melspec=None, n_mels=96, model='MTT_musicnn', inpu
 
     # batching data
     if isinstance(melspec,np.ndarray):
-        batch, spectrogram = batch_mel(melspec, n_frames, overlap)
+        batch, spectrogram = batch_mel(melspec, n_frames, overlap, n_mels)
     elif isinstance(file_name, str):
         print('Computing spectrogram (w/ librosa) and tags (w/ tensorflow)..', end =" ")
         batch, spectrogram = batch_data(file_name, n_frames, overlap)
