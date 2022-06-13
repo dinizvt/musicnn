@@ -35,13 +35,13 @@ def batch_mel(melspetrogram, n_frames, overlap):
     Data format: 2D np.array (time, frequency)
     '''
 
-    if melspetrogram.shape[1] != config.N_MELS:
+    if melspetrogram.shape[1] != n_mels:
         print('The mel spectrogram has not the right shape. Converting...')
         S = librosa.feature.inverse.mel_to_stft(melspetrogram)
         audio_rep = librosa.feature.melspectrogram(S=S,
                                             hop_length=config.FFT_HOP,
                                             n_fft=config.FFT_SIZE,
-                                            n_mels=config.N_MELS).T
+                                            n_mels=n_mels).T
     else:
         audio_rep = melspetrogram.T
     print(audio_rep.shape)
@@ -115,7 +115,7 @@ def batch_data(audio_file, n_frames, overlap):
     return batch, audio_rep
 
 
-def extractor(file_name=None, melspec=None, model='MTT_musicnn', input_length=3, input_overlap=False, extract_features=True):
+def extractor(file_name=None, melspec=None, n_mels=96, model='MTT_musicnn', input_length=3, input_overlap=False, extract_features=True):
     '''Extract the taggram (the temporal evolution of tags) and features (intermediate representations of the model) of the music-clip in file_name with the selected model.
 
     INPUT
@@ -186,7 +186,7 @@ def extractor(file_name=None, melspec=None, model='MTT_musicnn', input_length=3,
     # tensorflow: define the model
     tf.compat.v1.reset_default_graph()
     with tf.name_scope('model'):
-        x = tf.compat.v1.placeholder(tf.float32, [None, n_frames, config.N_MELS])
+        x = tf.compat.v1.placeholder(tf.float32, [None, n_frames, n_mels])
         is_training = tf.compat.v1.placeholder(tf.bool)
         if 'vgg' in model:
             y, pool1, pool2, pool3, pool4, pool5 = models.define_model(x, is_training, model, num_classes)
