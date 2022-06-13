@@ -35,15 +35,13 @@ def batch_mel(melspetrogram, n_frames, overlap, n_mels):
     Data format: 2D np.array (time, frequency)
     '''
 
-    if melspetrogram.shape[1] != n_mels:
+    if melspetrogram.shape[0] != n_mels:
         print('The mel spectrogram has not the right shape. Converting...')
         S = librosa.feature.inverse.mel_to_stft(melspetrogram)
         audio_rep = librosa.feature.melspectrogram(S=S,
                                             hop_length=config.FFT_HOP,
                                             n_fft=config.FFT_SIZE,
                                             n_mels=n_mels).T
-    else:
-        audio_rep = melspetrogram.T
     print(audio_rep.shape)
     audio_rep = audio_rep.astype(np.float16)
     audio_rep = np.log10(10000 * audio_rep + 1)
